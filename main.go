@@ -1,21 +1,12 @@
 package main
 
-import (
-	"github.com/gin-gonic/gin"
-)
-
-func getReceiptById(c *gin.Context) {
-	// GET: /receipts/{id}/points
-}
-
-func processReceipts(c *gin.Context) {
-	// POST: /receipts/process
-}
+import "github.com/gin-gonic/gin"
 
 func main() {
-	router := gin.Default()
-	router.GET("/receipts/:id/points", getReceiptById)
-	router.POST("/receipts/process", processReceipts)
+	store := &receiptStore{
+		receipts: make(map[string]receipt),
+	}
+	var router *gin.Engine = setupRouter(store)
 
 	router.Run("localhost:8080")
 }
