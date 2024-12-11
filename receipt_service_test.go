@@ -13,7 +13,7 @@ import (
 
 func setupTestContext() *gin.Engine {
 	store := &receiptStore{
-		receipts: make(map[string]receipt),
+		receipts: make(map[string]receiptWrapper),
 	}
 	router := setupRouter(store)
 	return router
@@ -47,6 +47,8 @@ func TestProcessAndReceive(t *testing.T) {
 		Total: "35.35",
 	}
 
+	expectedPoints := 28
+
 	// post receipt
 	body, err := json.Marshal(testReceipt)
 	assert.NoError(t, err)
@@ -71,10 +73,12 @@ func TestProcessAndReceive(t *testing.T) {
 	router.ServeHTTP(recorder, request)
 	assert.Equal(t, http.StatusOK, recorder.Code)
 
-	var fetchedReceipt receipt
-	err = json.Unmarshal(recorder.Body.Bytes(), &fetchedReceipt)
+	var pointsResponse struct {
+		Points int `json:"points"`
+	}
+	err = json.Unmarshal(recorder.Body.Bytes(), &pointsResponse)
 
 	assert.NoError(t, err)
-	assert.Equal(t, fetchedReceipt, testReceipt)
+	assert.Equal(t, pointsResponse.Points, expectedPoints)
 
 }
