@@ -81,11 +81,11 @@ var validTestCases = []struct {
 	{
 		description: "0 points",
 		receipt: receipt{
-			Retailer:     "*#^&)$^!)*#  --  -",
+			Retailer:     "&&&-__- _ -& ",
 			PurchaseDate: "2024-11-12",
 			PurchaseTime: "00:00",
 			Items: []receiptItem{
-				{ShortDescription: "itemÃ", Price: "1.01"},
+				{ShortDescription: "item", Price: "1.01"},
 			},
 			Total: "1.01",
 		},
@@ -260,4 +260,45 @@ func TestAllValidReceipts(t *testing.T) {
 		assert.Equal(t, pointsResponse.Points, tc.expectedPoints)
 	}
 
+}
+
+func TestInvalidReceipts(t *testing.T) {
+	router := setupTestContext()
+
+	for _, tc := range invalidTestCases {
+		testReceipt := tc.receipt
+		body, err := json.Marshal(testReceipt)
+		assert.NoError(t, err)
+
+		recorder := httptest.NewRecorder()
+		request, _ := http.NewRequest("POST", "/receipts/process", bytes.NewBuffer(body))
+		request.Header.Set("Content-Type", "application/json")
+		router.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		var response struct {
+			Error string `json:"error"`
+		}
+		err = json.Unmarshal(recorder.Body.Bytes(), &response)
+		assert.NoError(t, err)
+		assert.Equal(t, response.Error, "The receipt is invalid.")
+	}
+}
+
+func TestNonexistentReceipt(t *testing.T) {
+	router := setupTestContext()
+
+	id := "this id is invalid"
+	recorder := httptest.NewRecorder()
+	request, _ := http.NewRequest("GET", "/receipts/"+id+"/points", nil)
+	router.ServeHTTP(recorder, request)
+	assert.Equal(t, http.StatusNotFound, recorder.Code)
+
+	var response struct {
+		Error string `json:"error"`
+	}
+	err := json.Unmarshal(recorder.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, response.Error, "No receipt found for that ID.")
 }

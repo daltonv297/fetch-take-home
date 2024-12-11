@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"net/http"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -42,7 +44,9 @@ func (store *receiptStore) getReceiptPointsById(c *gin.Context) {
 
 	receiptGet, ok := store.receipts[id]
 	if !ok {
-		// TODO: handle error
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "No receipt found for that ID.",
+		})
 		return
 	}
 
@@ -58,13 +62,37 @@ func (store *receiptStore) processReceipts(c *gin.Context) {
 
 	var newReceipt receipt
 	if err := c.BindJSON(&newReceipt); err != nil {
-		// TODO: handle error
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "The receipt is invalid.",
+		})
+		return
+	}
+
+	// validate receipt field formats
+	valid := regexp.MustCompile(`^[\w\s\-&]+$`).MatchString(newReceipt.Retailer) &&
+		regexp.MustCompile(`^\d+\.\d{2}$`).MatchString(newReceipt.Total) &&
+		len(newReceipt.Items) > 0
+
+	for _, item := range newReceipt.Items {
+		valid = valid && regexp.MustCompile(`^[\w\s\-]+$`).MatchString(item.ShortDescription) &&
+			regexp.MustCompile(`^\d+\.\d{2}$`).MatchString(item.Price)
+	}
+	if !valid {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "The receipt is invalid.",
+		})
 		return
 	}
 
 	// assumes duplicate receipts with identical content are allowed
 	id := uuid.New().String()
-	var receiptPoints int = computePoints(&newReceipt)
+	receiptPoints, err := computePoints(&newReceipt)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "The receipt is invalid.",
+		})
+		return
+	}
 	store.receipts[id] = receiptWrapper{Receipt: newReceipt, Points: receiptPoints}
 
 	returnIdJSON := struct {
@@ -74,7 +102,7 @@ func (store *receiptStore) processReceipts(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, returnIdJSON)
 }
 
-func computePoints(receipt *receipt) int {
+func computePoints(receipt *receipt) (int, error) {
 	points := 0
 	points += countAlphanumeric(receipt.Retailer)
 
@@ -94,7 +122,7 @@ func computePoints(receipt *receipt) int {
 		if utf8.RuneCountInString(strings.TrimSpace(item.ShortDescription))%3 == 0 {
 			priceFloat, err := strconv.ParseFloat(item.Price, 64)
 			if err != nil {
-				// TODO: handle error
+				return 0, fmt.Errorf("invalid price format: %v", err)
 			}
 			points += int(math.Ceil(priceFloat * 0.2))
 		}
@@ -104,11 +132,11 @@ func computePoints(receipt *receipt) int {
 	timeLayout := "15:04"
 	purchaseDate, err := time.Parse(dateLayout, receipt.PurchaseDate)
 	if err != nil {
-		// TODO: handle error
+		return 0, fmt.Errorf("invalid date format: %v", err)
 	}
 	purchaseTime, err := time.Parse(timeLayout, receipt.PurchaseTime)
 	if err != nil {
-		// TODO: handle error
+		return 0, fmt.Errorf("invalid time format: %v", err)
 	}
 
 	if purchaseDate.Day()%2 == 1 {
@@ -122,7 +150,7 @@ func computePoints(receipt *receipt) int {
 		points += 10
 	}
 
-	return points
+	return points, nil
 }
 
 func countAlphanumeric(s string) int {
