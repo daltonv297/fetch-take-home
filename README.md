@@ -32,8 +32,6 @@ curl http://localhost:8080/receipts/process \
 curl http://localhost:8080/receipts/270e90bb-2c3f-4e70-ba0a-41345e784db0/points
 ```
 
-270e90bb-2c3f-4e70-ba0a-41345e784db0
-
 
 ## Explanation of important design decisions
 
