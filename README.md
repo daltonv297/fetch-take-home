@@ -18,6 +18,22 @@ To run the service on a port different from 8080 (the default), run with the fla
 ### Running Test Cases
 Test cases have been provided in ```receipt_service_test.go```. Run them with ```go test```.
 
+### Interacting with the web service
+
+```bash
+curl http://localhost:8080/receipts/process \
+  --include \
+  --header "Content-Type: application/json" \
+  --request "POST" \
+  --data '{"retailer":"Target","purchaseDate":"2022-01-01","purchaseTime":"13:01","items":[{"shortDescription":"Mountain Dew 12PK","price":"6.49"},{"shortDescription":"Emils Cheese Pizza","price":"12.25"},{"shortDescription":"Knorr Creamy Chicken","price":"1.26"},{"shortDescription":"Doritos Nacho Cheese","price":"3.35"},{"shortDescription":"   Klarbrunn 12-PK 12 FL OZ  ","price":"12.00"}],"total":"35.35"}'
+```
+
+```bash
+curl http://localhost:8080/receipts/270e90bb-2c3f-4e70-ba0a-41345e784db0/points
+```
+
+270e90bb-2c3f-4e70-ba0a-41345e784db0
+
 
 ## Explanation of important design decisions
 
